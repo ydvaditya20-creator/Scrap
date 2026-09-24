@@ -146,50 +146,52 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); outlin
     .flex-header { flex-direction: column; gap: 15px; text-align: center; }
 }
 
-/* डिफ़ॉल्ट रूप से मोबाइल कार्ड छुपा रहेगा और डेस्कटॉप रो दिखेगी */
-/* डिफ़ॉल्ट रूप से मोबाइल कार्ड छुपा रहेगा और डेस्कटॉप रो दिखेगी */
-
-/* 🖥️ डिफ़ॉल्ट रूप से (डेस्कटॉप पर): मोबाइल कार्ड छिपे रहेंगे और टेबल दिखेगी */
-
-/* 🖥️ डेस्कटॉप स्क्रीन पर (डिफ़ॉल्ट रूप से): टेबल दिखेगी, मोबाइल कार्ड छुपेंगे */
-.desktop-only-view {
-    display: block !important;
-}
-.mobile-only-view {
-    display: none !important;
-}
-
-/* 📱 मोबाइल स्क्रीन (768px या उससे कम) पर */
+/* Single DOM responsive view: desktop table -> mobile card */
 @media screen and (max-width: 768px) {
-    /* डेस्कटॉप का टेबल व्यू पूरी तरह गायब */
-    .desktop-only-view {
-        display: none !important;
+    .table-responsive { overflow-x: visible; border: 0; }
+    .tally-table { min-width: 0; width: 100%; border: 0; }
+    .tally-table thead { display: none; }
+    .tally-table tbody { display: block; width: 100%; }
+    .tally-table tbody tr {
+        display: block;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin: 8px 0;
+        padding: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
     }
-
-    /* मोबाइल कार्ड्स का व्यू एक्टिव हो जाएगा */
-    .mobile-only-view {
-        display: block !important;
-        width: 100% !important;
+    .tally-table tbody tr td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        padding: 5px 3px;
+        font-size: 13px;
     }
-
-    /* मोबाइल कार्ड कंटेनर को फुल विड्थ और ज़ीरो पैडिंग दें ताकि वह फैले नहीं */
-    .mobile-cards-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 8px 4px !important;
-        box-sizing: border-box !important;
+    .tally-table tbody tr td:first-child { font-size: 10px; color: #777; }
+    .tally-table tbody tr td:nth-child(2) { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .tally-table tbody tr td:nth-child(3) { font-size: 12px; color: #64748b; }
+    .tally-table tbody tr td:nth-child(4) { padding-top: 8px; }
+    .tally-table tbody tr td:nth-child(5) {
+        background: #f8fafc;
+        border-left: 3px solid #3498db;
+        border-radius: 4px;
+        margin-top: 5px;
+        white-space: pre-line;
+        word-break: break-word;
     }
-    
-    .ledger-mobile-card {
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
+    .tally-table tbody tr td:last-child {
+        display: flex;
+        gap: 5px;
+        margin-top: 7px;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
     }
+    .tally-table tbody tr td:last-child .btn-sm { flex: 1; margin: 0; }
+    .image-detail-row { display: none !important; }
 }
-
-
-
-    </style>
+</style>
 </head>
 <body>
 
@@ -323,8 +325,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); outlin
         </table>
     </div>
 
-    <!-- 📱 मोबाइल के लिए अलग से कार्ड कंटेनर -->
-    <div class="mobile-cards-container mobile-only-view" id="natwaMobileCardsBody"></div>
 </div>
 
 
@@ -351,8 +351,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); outlin
         </table>
     </div>
 
-    <!-- 📱 मोबाइल के लिए अलग से कार्ड कंटेनर -->
-    <div class="mobile-cards-container mobile-only-view" id="basahiMobileCardsBody"></div>
 </div>
 
 </div>
@@ -744,159 +742,63 @@ window.openTableInNewTab = openTableInNewTab;
 // 4. --- आपका अपडेटेड रेंडरर फंक्शन (DD-MM-YYYY फॉर्मेट के साथ) ---
 // यह मुख्य फ़ंक्शन सिर्फ HTML स्ट्रिंग्स (टेम्पलेट) जनरेट करेगा
 // यह मुख्य फ़ंक्शन डेटा और सही ID लेकर HTML टेम्पलेट्स तैयार करेगा
-function getRowTemplates(data, rowId) {
-    // 1. डेस्कटॉप प्रविष्टियाँ (Double Entry Layout)
-    let entriesHtml = `<div style="display:flex; flex-direction:column; gap:4px;">`;
-    if(data.entries) {
-        data.entries.slice().reverse().forEach(e => {
-            entriesHtml += `<span><span class="badge badge-${e.type.toLowerCase()}">${e.type}</span> <b>${e.account}</b>:  ${e.amount}</span>`;
-        });
-    }
-    entriesHtml += `</div>`;
+function escapeHtml(v){
+    return String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
 
-    // 2. मोबाइल प्रविष्टियाँ (Clean Card Layout)
-    let mobileEntriesHtml = '';
-    if(data.entries) {
-        data.entries.slice().reverse().forEach(e => {
-            const isDr = e.type.toLowerCase() === 'dr' || e.type.toLowerCase() === 'debit';
-            const badgeBg = isDr ? '#e8f0fe' : '#fce8e6';
-            const badgeColor = isDr ? '#1a73e8' : '#d93025';
-            mobileEntriesHtml += `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="background: ${badgeBg}; color: ${badgeColor}; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 13px; min-width: 28px; text-align: center;">${e.type}</span>
-                        <span style="font-weight: 600; color: #333; font-size: 14px;">${e.account}</span>
-                    </div>
-                    <span style="font-weight: bold; color: ${badgeColor}; font-size: 14px;">₹${e.amount}</span>
-                </div>
-            `;
-        });
-    }
+function getRowTemplates(data,rowId){
+    let entriesHtml='<div style="display:flex;flex-direction:column;gap:4px">';
+    (data.entries||[]).slice().reverse().forEach(e=>{
+        const type=escapeHtml(e.type||'');
+        const cls=String(e.type||'').toLowerCase()==='cr'?'cr':'dr';
+        entriesHtml+=`<span><span class="badge badge-${cls}">${type}</span> <b>${escapeHtml(e.account||'')}</b>: ${escapeHtml(e.amount||'')}</span>`;
+    });
+    entriesHtml+='</div>';
 
-    const safeNarrationText = data.narration ? data.narration.replace(/\n/g, '<br>') : '';
-
-    // 3. रसीद / अटैचमेंट
-    let docHtml = `<span class="no-doc" style="font-size:11px; color:#999; display:block;">No bills attached</span>`;
-    if(data.billLinks && data.billLinks.length > 0) {
-        docHtml = `<details style="font-size:12px; background:#fafafa; padding:6px; border:1px solid #ddd; border-radius:4px; width:100%; box-sizing:border-box;"><summary style="cursor:pointer; font-weight:bold; color:#007bff;">📄 View Receipts (${data.billLinks.length})</summary><div style="margin-top:8px; display:flex; flex-direction:row; flex-wrap:wrap; gap:8px;">`;
-        data.billLinks.forEach(link => {
-            if(link.indexOf("data:image") === 0) {
-                docHtml += `<div style="flex:1 1 120px; max-width:140px; padding:5px; background:#fff3cd; border:1px solid #ffeba0; border-radius:4px; box-sizing:border-box;"><img src="${link}" style="width:100%; max-height:90px; object-fit:contain;"></div>`;
-            } else {
-                docHtml += `<div style="flex:1 1 120px; max-width:140px; padding:5px; background:#d4edda; border:1px solid #c3e6cb; border-radius:4px; box-sizing:border-box;"><iframe src="${link}" width="100%" height="90" style="border:none; background:#fff;"></iframe></div>`;
+    const safeNarration=escapeHtml(data.narration||'').replace(/\n/g,'<br>');
+    let docHtml='';
+    const links=Array.isArray(data.billLinks)?data.billLinks:[];
+    if(links.length){
+        docHtml=`<details style="font-size:12px;margin-top:6px"><summary style="cursor:pointer;font-weight:bold;color:#007bff">📄 View Receipts (${links.length})</summary><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">`;
+        links.forEach(link=>{
+            if(String(link).startsWith('data:image')){
+                docHtml+=`<img loading="lazy" src="${link}" style="width:120px;max-height:90px;object-fit:contain;background:#fff3cd;border:1px solid #ffeba0;border-radius:4px">`;
+            }else{
+                docHtml+=`<iframe loading="lazy" src="${escapeHtml(link)}" width="120" height="90" style="border:0;background:#fff"></iframe>`;
             }
         });
-        docHtml += `</div></details>`;
+        docHtml+='</div></details>';
     }
 
-    // 4. तारीख फॉर्मेट लॉजिक (DD-MM-YYYY)
-    let displayDate = "";
-    if (data.date && data.date.includes("-")) {
-        const parts = data.date.split("-");
-        displayDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    } else { displayDate = data.date || ""; }
+    let displayDate=data.date||'';
+    if(displayDate.includes('-')){
+        const p=displayDate.split('-');
+        if(p.length===3) displayDate=`${p[2]}-${p[1]}-${p[0]}`;
+    }
 
-    let totalAmount = data.total_amount || data.amount || "0.00";
+    const total=escapeHtml(data.total_amount||data.amount||'0.00');
+    const txn=escapeHtml(data.txn_id||'');
+    const voucher=escapeHtml(data.voucher_no||'');
 
-    // 🖥️ डेस्कटॉप के लिए टीडी (TD) सेल्स का अंदरूनी HTML
-    const desktopCellsHtml = `
-        <td><small><b>${data.txn_id}</b></small></td>
-        <td><b>${data.voucher_no}</b></td>
-        <td>${displayDate}</td>
-        <td>${entriesHtml}</td>
-        <td><span style="white-space: pre-line;">${safeNarrationText}</span></td>
+    return `
+        <td><small><b>${txn}</b></small></td>
+        <td><b>${voucher}</b></td>
+        <td>${escapeHtml(displayDate)}</td>
+        <td>${entriesHtml}${docHtml}</td>
+        <td><span style="white-space:pre-line">${safeNarration||'N/A'}</span></td>
         <td>
             <button class="btn-sm btn-edit" onclick="openEditForm('${rowId}')">Edit</button>
             <button class="btn-sm btn-delete" onclick="triggerDelete('${rowId}')">Delete</button>
             <button class="btn-sm btn-print" onclick="triggerPrint('${rowId}')">Print</button>
-        </td>
-    `;
-
-    // 📱 मोबाइल के लिए शुद्ध DIV कार्ड स्ट्रिंग
-    const mobileCardHtml = `
-        <div class="ledger-mobile-card" id="card-${rowId}" style="background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.05); font-family:system-ui, sans-serif; margin-bottom:16px; box-sizing:border-box; width:100%;">
-            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e0e0e0; padding-bottom:8px; margin-bottom:12px;">
-                <div>
-                    <span style="font-size:16px; font-weight:bold; color:#2c3e50;">${data.voucher_no}</span>
-                    <div style="font-size:11px; color:#7f8c8d; margin-top:2px;">ID: ${data.txn_id}</div>
-                </div>
-                <div><span style="font-size:13px; font-weight:500; color:#34495e;">📅 ${displayDate}</span></div>
-            </div>
-            <div style="margin-bottom:12px;">${mobileEntriesHtml}</div>
-            <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; border-top:1px solid #f1f2f6; padding-top:8px; font-size:14px; font-weight:bold;">
-                <span>Total:</span><span>₹${totalAmount}</span>
-            </div>
-            <div style="margin-top:12px; background:#f8f9fa; border-left:3px solid #3498db; padding:8px 10px; border-radius:0 6px 6px 0; font-size:13px; color:#555; word-break:break-word;">
-                <strong style="color:#2c3e50;">Narration:</strong> ${safeNarrationText || 'N/A'}
-            </div>
-            <div style="margin-top:12px; font-size:13px;">
-                <div style="font-weight:600; color:#7f8c8d; margin-bottom:4px;">Attachments:</div>
-                ${docHtml}
-            </div>
-            <div style="display:flex; gap:6px; margin-top:14px; border-top:1px solid #f1f2f6; padding-top:10px;">
-                <button onclick="triggerPrint('${rowId}')" style="flex:1; padding:8px 4px; background:#f1f2f6; border:none; border-radius:6px; font-weight:600; font-size:12px; color:#2c3e50; cursor:pointer;">🖨️ Receipt</button>
-                <button onclick="openEditForm('${rowId}')" style="flex:1; padding:8px 4px; background:#fff; border:1px solid #dcdde1; border-radius:6px; font-weight:600; font-size:12px; color:#2f3542; cursor:pointer;">✏️ Edit</button>
-                <button onclick="triggerDelete('${rowId}')" style="flex:1; padding:8px 4px; background:#eb4d4b; border:none; border-radius:6px; font-weight:600; font-size:12px; color:#fff; cursor:pointer;">🗑️ Delete</button>
-            </div>
-        </div>
-    `;
-
-    return { desktopCells: desktopCellsHtml, mobileCard: mobileCardHtml, desktopDoc: docHtml };
+        </td>`;
 }
 
-// 🟢 संशोधित रेंडरर फ़ंक्शन (पुराना सिग्नेचर सुरक्षित रखा गया है)
-function renderRowStandard(row, data) {
-    // 🛡️ एरर फिक्स: row.id को सुरक्षित रूप से स्ट्रिंग की तरह हैंडल करना
-    const rowIdStr = String(row.id);
-    cacheRowData[rowIdStr.replace("row-", "")] = data;
-    cacheRowData[rowIdStr] = data;
-
-    // टेम्पलेट्स जेनरेट करें
-    const templates = getRowTemplates(data, rowIdStr);
-
-    // 1. डेस्कटॉप रो के अंदर टीडी (TD) डालें
-    row.innerHTML = templates.desktopCells;
-
-    // 2. डेस्कटॉप के लिए नीचे वाली अतिरिक्त रसीद इमेज रो इन्सर्ट करें
-    function injectDetailRow() {
-        const oldDetailRow = document.getElementById(`detail-${rowIdStr}`);
-        if (oldDetailRow) { oldDetailRow.remove(); }
-
-        const detailRowHtml = `
-            <tr id="detail-${rowIdStr}" class="image-detail-row">
-                <td colspan="6" style="padding: 4px 10px; background-color: #fdfdfd;">
-                    ${templates.desktopDoc}
-                </td>
-            </tr>
-        `;
-        row.insertAdjacentHTML('afterend', detailRowHtml);
-    }
-
-    if (row.parentNode) { injectDetailRow(); } 
-    else { setTimeout(() => { if (row.parentNode) { injectDetailRow(); } }, 0); }
-
-    // 3. 📱 मोबाइल प्लेसहॉल्डर में ऑटोमैटिकली डेटा कार्ड अपेंड करना
-    // यह चेक करेगा कि यह रो किस टेबल (Natwa या Basahi) के अंदर रेंडर हो रही है
-    setTimeout(() => {
-        const parentTable = row.closest('.tally-table');
-        if (!parentTable) return;
-
-        // पहले से बने पुराने डुप्लीकेट मोबाइल कार्ड को हटा दें ताकि डेटा डबल न हो
-        const oldMobileCard = document.getElementById(`card-${rowIdStr}`);
-        if (oldMobileCard) { oldMobileCard.remove(); }
-
-        // टेबल की आईडी या क्लास के आधार पर सही मोबाइल कंटेनर चुनें
-        if (row.id.includes('natwa') || parentTable.closest('#natwaCard')) {
-            const targetHolder = document.getElementById('natwaMobileCardsBody');
-            if (targetHolder) targetHolder.insertAdjacentHTML('beforeend', templates.mobileCard);
-        } else {
-            const targetHolder = document.getElementById('basahiMobileCardsBody');
-            if (targetHolder) targetHolder.insertAdjacentHTML('beforeend', templates.mobileCard);
-        }
-    }, 0);
+function renderRowStandard(row,data){
+    const rowIdStr=String(row.id);
+    cacheRowData[rowIdStr.replace('row-','')]=data;
+    cacheRowData[rowIdStr]=data;
+    row.innerHTML=getRowTemplates(data,rowIdStr);
 }
-
-        
 
 function resetEntryForm(){
     editingKey=null; editingBranch=null; editingOldData=null; editBillLinks=[];
@@ -981,7 +883,6 @@ window.triggerDelete=async function(rowId){
     const row=document.getElementById(rowId);
     if(!row || !confirm("Delete this Tally multi-split voucher?")) return;
     const key=row.dataset.key, branch=row.dataset.branch, parent=row.parentNode, next=row.nextSibling, data=cacheRowData[rowId];
-    const detail=document.getElementById(`detail-${rowId}`); if(detail) detail.remove();
     row.remove();
     delete cacheRowData[rowId]; delete cacheRowData[key];
     try{
